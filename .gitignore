@@ -1,0 +1,49 @@
+# Dati: video, dataset, output di valutazione e demo (mai in git)
+data/
+
+# Modelli e pesi
+*.onnx
+*.engine
+*.trt
+*.pt
+*.pth
+*.hef
+*.tflite
+*.bin
+models/
+
+# Video e immagini sparsi
+*.mp4
+*.avi
+*.mkv
+*.mov
+*.h264
+*.h265
+
+# Output
+outputs/
+runs/
+*.log
+
+# Credenziali e configurazioni locali
+.env
+.env.*
+*.secret
+config/local*.yaml
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+build/
+dist/
+
+# Editor e sistema
+.vscode/
+.idea/
+.DS_Store
