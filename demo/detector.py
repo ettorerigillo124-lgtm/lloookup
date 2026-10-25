@@ -109,7 +109,8 @@ class PersonSegmenter:
 
 
 class HandDetector:
-    """MediaPipe HandLandmarker (Tasks API). Restituisce una lista di array (21, 2) in pixel."""
+    """MediaPipe HandLandmarker (Tasks API).
+    Restituisce (mani, lati): mani = lista di array (21, 2) in pixel, lati = "Left"/"Right" (handedness)."""
 
     def __init__(self, cfg):
         import mediapipe as mp
@@ -130,7 +131,9 @@ class HandDetector:
         img = self.mp.Image(image_format=self.mp.ImageFormat.SRGB,
                             data=np.ascontiguousarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)))
         res = self.lm.detect_for_video(img, self.ts)
-        return [np.array([[p.x * w, p.y * h] for p in hand]) for hand in res.hand_landmarks]
+        hands = [np.array([[p.x * w, p.y * h] for p in hand]) for hand in res.hand_landmarks]
+        sides = [hd[0].category_name if hd else "?" for hd in res.handedness]
+        return hands, sides
 
 
 class FaceDetector:

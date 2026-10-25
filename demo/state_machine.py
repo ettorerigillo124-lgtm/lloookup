@@ -43,6 +43,7 @@ class Track:
         self.armed_by_bag = False
         self.seen_streak = 0
         self.hits = 1
+        self.hold_side = None     # lato (handedness) della mano che teneva l'oggetto
 
 
 class StateMachine:
@@ -54,6 +55,8 @@ class StateMachine:
         self.events = []          # (t, testo)
         self.alert = None         # testo dell'allarme attivo (latched fino al reset)
         self.bags = []
+        self._bag_mem = []
+        self.t = 0.0
         self.stamp = lambda t: f"{t:6.1f}s"   # main.py lo sostituisce (ora reale o tempo video)
 
     def reset(self, t):
@@ -99,21 +102,40 @@ class StateMachine:
                 matched[ti] = di
         return matched
 
-    def update(self, t, dets, hands, scale):
+    def visible_tracks(self):
+        """Tracce da mostrare: confermate e viste di recente, oppure in uno stato rilevante."""
+        out = []
+        for tr in self.tracks:
+            if tr.hits < self.tr["min_hits"]:
+                continue
+            if tr.state != VISIBILE or self.t - tr.last_seen <= self.tr["show_stale_s"]:
+                out.append(tr)
+        return out
+
+    def _update_bags(self, t, dets):
+        for d in dets:
+            if d.cls in self.bag_classes:
+                self._bag_mem = [(bt, b) for bt, b in self._bag_mem if iou_like(b.box, d.box) < 0.3]
+                self._bag_mem.append((t, d))
+        self._bag_mem = [(bt, b) for bt, b in self._bag_mem if t - bt <= self.tr["bag_memory_s"]]
+        self.bags = [b for _, b in self._bag_mem]
+
+    def _near_bag(self, box, scale):
+        return any(box_box_dist(box, b.box) <= self.s["bag_dist_px"] * scale for b in self.bags)
+
+    def update(self, t, dets, hands, scale, sides=None):
         """
         Chiamato solo sui frame dove gira la detection.
-        t: secondi. dets: Det (incluse le borse). hands: liste di punti (21,2). scale: lato_lungo/640.
+        t: secondi. dets: Det (incluse le borse). hands: liste di punti (21,2). sides: lato di ogni mano.
+        scale: lato_lungo/640 (le distanze in config sono riferite a 640 px).
         """
         s = self.s
-        self.bags = [d for d in dets if d.cls in self.bag_classes]
+        self.t = t
+        sides = sides or ["?"] * len(hands)
+        self._update_bags(t, dets)
         objs = [d for d in dets if d.cls not in self.bag_classes]
         matched = self._match(objs, t)
         matched_dets = set(matched.values())
-        for di, d in enumerate(objs):
-            if di not in matched_dets:
-                self.tracks.append(Track(d, t))
-
-        hand_pts = list(hands)
         for ti, tr in enumerate(self.tracks):
             if ti in matched:
                 d = objs[matched[ti]]
@@ -123,28 +145,38 @@ class StateMachine:
                 tr.missing = 0
                 tr.seen_streak += 1
                 tr.hits += 1
-            elif tr.hits > 0 and tr.last_seen < t:
+            else:
                 tr.missing += 1
                 tr.seen_streak = 0
+        for di, d in enumerate(objs):
+            if di not in matched_dets:
+                self.tracks.append(Track(d, t))
 
+        hand_boxes = [h_box(h) for h in hands]
         for tr in self.tracks:
+            if tr.hits < self.tr["min_hits"]:
+                continue
             seen = tr.missing == 0
             if tr.state == OCCULTATO:
                 # l'allarme resta; se l'oggetto torna stabilmente visibile la traccia torna VISIBILE (log)
                 if seen and tr.seen_streak >= s["reappear_frames"] * 2:
                     tr.state = VISIBILE
                     tr.hand_score = tr.bag_score = 0
+                    tr.armed_until = -1
+                    tr.armed_by_bag = False
                     self._emit(t, tr, VISIBILE)
                 continue
 
             if seen:
-                near_hand = any(box_point_dist(tr.box, h) <= s["hand_dist_px"] * scale for h in hand_pts)
-                ref = [tr.box] + [h_box(h) for h in hand_pts
-                                  if box_point_dist(tr.box, h) <= s["hand_dist_px"] * scale]
-                near_bag = any(box_box_dist(r, b.box) <= s["bag_dist_px"] * scale
-                               for r in ref for b in self.bags)
-                tr.hand_score = min(tr.hand_score + 1, s["in_hand_frames"] + s["release_frames"]) if near_hand \
-                    else max(tr.hand_score - 1, 0)
+                dists = [box_point_dist(tr.box, h) for h in hands]
+                close = [i for i, dd in enumerate(dists) if dd <= s["hand_dist_px"] * scale]
+                near_hand = bool(close)
+                if near_hand:
+                    tr.hold_side = sides[min(close, key=lambda i: dists[i])]
+                near_bag = self._near_bag(tr.box, scale) or any(
+                    self._near_bag(hand_boxes[i], scale) for i in close)
+                tr.hand_score = min(tr.hand_score + 1, s["in_hand_frames"] + s["release_frames"]) \
+                    if near_hand else max(tr.hand_score - 1, 0)
                 tr.bag_score = min(tr.bag_score + 1, s["near_bag_frames"] + s["bag_release_frames"]) \
                     if (near_bag and tr.state in (IN_MANO, VICINO_SACCHETTO)) else max(tr.bag_score - 1, 0)
 
@@ -160,10 +192,18 @@ class StateMachine:
 
                 if tr.state in (IN_MANO, VICINO_SACCHETTO):
                     tr.armed_until = t + s["armed_window_s"]
-                    tr.armed_by_bag = tr.state == VICINO_SACCHETTO or (
-                        tr.armed_by_bag and tr.armed_until > t)
+                    tr.armed_by_bag = tr.state == VICINO_SACCHETTO
             else:
-                armed = t <= tr.armed_until and (tr.armed_by_bag or not s["require_bag"])
+                if t > tr.armed_until:
+                    continue
+                # l'oggetto non si vede: la mano che lo teneva e' andata al sacchetto?
+                if s["hand_to_bag"] and not tr.armed_by_bag and tr.hold_side is not None:
+                    for i, side in enumerate(sides):
+                        if side == tr.hold_side and self._near_bag(hand_boxes[i], scale):
+                            tr.armed_by_bag = True
+                            self._set(t, tr, VICINO_SACCHETTO)
+                            break
+                armed = tr.armed_by_bag or not s["require_bag"]
                 if armed and tr.missing >= s["missing_frames"]:
                     self._set(t, tr, OCCULTATO)
 
@@ -171,6 +211,13 @@ class StateMachine:
         self.tracks = [tr for tr in self.tracks
                        if tr.state == OCCULTATO or t - tr.last_seen <= self.tr["max_age_s"]
                        or t <= tr.armed_until]
+
+
+def iou_like(a, b):
+    x1, y1, x2, y2 = max(a[0], b[0]), max(a[1], b[1]), min(a[2], b[2]), min(a[3], b[3])
+    inter = max(0, x2 - x1) * max(0, y2 - y1)
+    small = min((a[2] - a[0]) * (a[3] - a[1]), (b[2] - b[0]) * (b[3] - b[1]))
+    return inter / small if small > 0 else 0.0
 
 
 def h_box(pts):

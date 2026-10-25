@@ -64,18 +64,18 @@ class Pipeline:
         h, w = frame.shape[:2]
         scale = max(h, w) / 640
         persons = self.persons(frame)
-        hands = self.hands(frame, t * 1000)
+        hands, sides = self.hands(frame, t * 1000)
         faces = self.faces(frame)
         ran = self.n % self.detect_every == 0
         if ran:
             self.last_dets = self.objects(frame)
-            self.sm.update(t, self.last_dets, hands, scale)
+            self.sm.update(t, self.last_dets, hands, scale, sides)
         self.n += 1
 
-        reveal = [(tr.cls, tr.box) for tr in self.sm.tracks if tr.missing == 0]
+        reveal = [(tr.cls, tr.box) for tr in self.sm.visible_tracks() if tr.missing == 0]
         out, mode = self.guard.apply(frame, persons, faces, hands, reveal)
         # da qui in poi si lavora SOLO sul frame anonimizzato
-        draw_scene(out, self.sm.tracks, self.sm.bags, hands, persons.mask, self.sm.alert,
+        draw_scene(out, self.sm.visible_tracks(), self.sm.bags, hands, persons.mask, self.sm.alert,
                    s=max(h, w) / 720)
         info = dict(mode=mode, persons=len(persons.boxes), hands=len(hands), faces=len(faces),
                     dets=self.last_dets if ran else None, ran=ran)

@@ -74,8 +74,11 @@ def draw_scene(img, tracks, bags, hands, person_mask, alert, s, show_hands=True)
         h, w = img.shape[:2]
         bh = int(48 * s)
         cv2.rectangle(img, (0, 0), (w, bh), RED, -1)
-        _text(img, f"ALERT: occultamento rilevato - {alert}", (int(12 * s), int(bh * 0.68)),
-              0.75 * s, (255, 255, 255), max(1, int(2 * s)))
+        txt = f"ALERT: occultamento rilevato - {alert}"
+        fs, th = 0.75 * s, max(1, int(2 * s))
+        tw = cv2.getTextSize(txt, FONT, fs, th)[0][0]
+        fs *= min(1.0, (w - 24 * s) / tw)  # il testo deve stare nella larghezza del video
+        _text(img, txt, (int(12 * s), int(bh * 0.68)), fs, (255, 255, 255), th)
 
 
 def compose(video, events, fps, cfg, alert, mode, info=""):

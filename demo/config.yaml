@@ -17,7 +17,7 @@ classes:
     conf: 0.35
   - name: eyeglasses
     prompts: [eyeglasses, glasses]
-    conf: 0.20
+    conf: 0.35
   - name: pen
     prompts: [pen, ballpoint pen]
     conf: 0.10
@@ -60,6 +60,9 @@ hands:
 tracking:
   match_dist: 0.35        # distanza massima centro-centro (in diagonali della bbox) per associare
   max_age_s: 6.0          # dopo quanti secondi senza detection una traccia viene eliminata (se non armata)
+  min_hits: 3             # detection minime prima che una traccia sia mostrata/usata (anti falsi positivi)
+  show_stale_s: 1.0       # una traccia non armata e non vista da piu' di cosi' non viene disegnata
+  bag_memory_s: 1.0       # il sacchetto resta "presente" per questo tempo dopo l'ultima detection
 
 state:
   # Distanza oggetto-mano: distanza tra bbox oggetto (allargata) e punti della mano, in px a 640 di lato lungo.
@@ -70,7 +73,8 @@ state:
   near_bag_frames: 3
   bag_release_frames: 20
   missing_frames: 20       # M: frame consecutivi senza detection per OCCULTATO
-  armed_window_s: 3.0      # l'occultamento conta solo se l'oggetto era in mano/vicino al sacchetto da poco
+  armed_window_s: 6.0      # l'occultamento conta solo se l'oggetto era in mano/vicino al sacchetto da poco
+  hand_to_bag: true        # oggetto sparito + la mano che lo teneva va al sacchetto => VICINO_SACCHETTO
   require_bag: true        # OCCULTATO solo se l'ultimo stato era VICINO_SACCHETTO (meno falsi allarmi)
   reappear_frames: 6       # se l'oggetto riappare per K frame prima di M, l'occultamento si annulla
 
