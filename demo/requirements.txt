@@ -1,0 +1,12 @@
+# Demo LookUp. Python 3.10+ (testato su 3.13).
+# ATTENZIONE: ultralytics e' AGPL-3.0 (vedi docs/licenses.md): solo demo, non prodotto.
+ultralytics==8.4.189
+mediapipe==1.1.1
+opencv-python==5.0.0.93
+numpy==2.5.4
+PyYAML==6.0.3
+torch==2.14.1
+torchvision==0.29.1
+pytest==9.1.1
+# encoder testuale CLIP usato da YOLO-World per i prompt delle classi
+clip @ git+https://github.com/ultralytics/CLIP.git@7ffa84b3bfa40c42ecc1c77147a855e69cb2dd40
