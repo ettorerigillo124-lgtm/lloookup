@@ -69,6 +69,7 @@ class Pipeline:
         ran = self.n % self.detect_every == 0
         if ran:
             self.last_dets = self.objects(frame)
+            self.sm.step = self.detect_every
             self.sm.update(t, self.last_dets, hands, scale, sides)
         self.n += 1
 
@@ -90,7 +91,16 @@ def main():
     ap.add_argument("--record", default=None,
                     help="salva il video GIA' ANONIMIZZATO (con overlay) in questo file")
     ap.add_argument("--max-seconds", type=float, default=None)
+    ap.add_argument("--list-cameras", action="store_true", help="elenca gli indici webcam disponibili")
     args = ap.parse_args()
+    if args.list_cameras:
+        for i in range(6):
+            cap = cv2.VideoCapture(i)
+            ok, f = cap.read() if cap.isOpened() else (False, None)
+            if ok:
+                print(f"  --source {i}   {f.shape[1]}x{f.shape[0]}")
+            cap.release()
+        return
 
     cfg = load_config(args.config)
     source = args.source if args.source is not None else cfg["source"]

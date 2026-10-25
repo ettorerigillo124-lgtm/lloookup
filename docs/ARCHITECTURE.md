@@ -294,6 +294,7 @@ I falsi allarmi sono la metrica principale (`CLAUDE.md`) e vanno riportati in og
 | D19 | 22/10/2026 | Re-ID di aspetto e uscita senza cassa multi-camera fuori dal prototipo | Risposte legale 4 e business 5 |
 | D20 | 22/10/2026 | Codice dei candidati libero (anche Ultralytics), ma non entra nel repo | Risposta business 11 |
 | D21 | 22/10/2026 | Nel deck solo video inscenati con liberatoria firmata o clip di dataset pubblici, dopo revisione manuale frame per frame; mai video di negozi. Il privacy gate usa una soglia di detection più bassa di quella di analisi (default 0,1 vs 0,4) | Blur mancato sulle persone non rilevate |
+| D22 | 25/10/2026 | Demo investitori in `demo/` sul branch `demo-mvp`: YOLO-World + YOLOv8-seg (Ultralytics, AGPL) come dipendenza, MediaPipe per mani e volto. Non entra nella pipeline di prodotto `lookup/` | Serve una detection open-vocabulary (penna, occhiali) per la demo di venerdì. Dettagli in `demo/DECISIONS.md` |
 
 ## 12. Domande aperte
 

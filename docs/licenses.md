@@ -44,6 +44,9 @@ Registro di ogni codice, peso pre-addestrato, dataset e tool che usiamo o abbiam
 | RT-DETR / RT-DETRv2 (repo ufficiale) | Apache-2.0 | Riferimento di accuratezza | candidato | sì | `lyuwenyu/RT-DETR`. RT-DETR **dentro Ultralytics** è AGPL |
 | D-FINE | Apache-2.0 | Riferimento di accuratezza | candidato | sì | `Peterande/D-FINE` |
 | RF-DETR (pacchetto `rfdetr`) | Apache-2.0 | Possibile alternativa | candidato | sì | `roboflow/rf-detr`. ⚠️ I modelli "Plus" hanno licenza diversa, vedi i pesi |
+| ⚠️ Ultralytics (YOLO-World, YOLOv8-seg) | **AGPL-3.0** | Solo demo investitori (`demo/`, branch `demo-mvp`): detection open-vocabulary e maschera persona | demo (non prodotto) | no | `ultralytics/ultralytics`. Eccezione approvata dal fondatore il 25/10/2026 (DECISIONS.md D-01); da confermare con l'altro socio. Non entra nel prodotto |
+| CLIP (fork `ultralytics/CLIP`) | MIT | Encoder testuale dei prompt di YOLO-World | demo (non prodotto) | no | Pesi OpenAI ViT-B/32 scaricati al primo avvio |
+| MediaPipe (Tasks: HandLandmarker, FaceDetector) | Apache-2.0 | Demo: mani (stato "in mano") e volto (solo per tenerlo sempre oscurato, nessun riconoscimento) | demo | no | `google-ai-edge/mediapipe`. Adatto alla demo frontale col telefono, resta scartato per CCTV dall'alto |
 | ⚠️ Ultralytics (YOLOv8/11, RT-DETR, YOLO-pose) | **AGPL-3.0** | — | scartato (serve licenza enterprise) | sì | `ultralytics/ultralytics` |
 | ⚠️ YOLOv5 | **AGPL-3.0** | — | scartato | sì | `ultralytics/yolov5` |
 | ⚠️ YOLOv10 | **AGPL-3.0** | — | scartato | sì | `THU-MIG/yolov10` |
@@ -120,6 +123,9 @@ La licenza del codice **non** copre automaticamente i pesi: contano anche i term
 | RTMPose (configurazioni "coco") | da verificare | **AIC + COCO** (non solo COCO) | Demo facoltativa | candidato | sì (dataset, da README) | Il README di `mmpose/projects/rtmpose` raggruppa questi modelli sotto "AIC+COCO". Licenza di AI Challenger: domanda Q-L2 |
 | RTMPose Body7/Body8 (default di rtmlib) | da verificare | COCO, AIC, CrowdPose, MPII, Halpe e altri | — | non usare finché non è chiarito | sì (dataset, da README) | Troppi dataset con termini diversi |
 | YuNet | MIT | WIDER FACE | Estensione disattivata | in attesa del legale | sì (licenza) / no (dataset) | |
+| ⚠️ YOLO-World v2 S (`yolov8s-worldv2.pt`) | **AGPL-3.0** (Ultralytics) | Objects365, GoldG, ecc. | Solo demo | demo (non prodotto) | no | Termini dei dataset da verificare (Q-L2). Mai nel prodotto |
+| ⚠️ YOLOv8n-seg (`yolov8n-seg.pt`) | **AGPL-3.0** (Ultralytics) | COCO | Solo demo: maschera persona per l'oscuramento | demo (non prodotto) | no | |
+| MediaPipe hand_landmarker / blaze_face_short_range | Apache-2.0 (model card Google) | dati Google | Solo demo | demo | no | Model card da leggere prima di qualsiasi uso fuori demo |
 | ⚠️ InsightFace (RetinaFace, SCRFD, ecc.) | **Solo ricerca non commerciale** | WIDER FACE, ecc. | — | scartato | sì | README di InsightFace |
 | ⚠️ VideoMAE | **CC BY-NC 4.0** | Kinetics, ecc. | — | scartato | sì | |
 

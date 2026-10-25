@@ -43,7 +43,7 @@ class Track:
         self.armed_by_bag = False
         self.seen_streak = 0
         self.hits = 1
-        self.hold_side = None     # lato (handedness) della mano che teneva l'oggetto
+        self.hold_pos = None      # ultima posizione nota della mano che teneva l'oggetto
 
 
 class StateMachine:
@@ -57,6 +57,7 @@ class StateMachine:
         self.bags = []
         self._bag_mem = []
         self.t = 0.0
+        self.step = 1             # ogni quanti frame gira la detection (main.py lo aggiorna)
         self.stamp = lambda t: f"{t:6.1f}s"   # main.py lo sostituisce (ora reale o tempo video)
 
     def reset(self, t):
@@ -129,7 +130,8 @@ class StateMachine:
         t: secondi. dets: Det (incluse le borse). hands: liste di punti (21,2). sides: lato di ogni mano.
         scale: lato_lungo/640 (le distanze in config sono riferite a 640 px).
         """
-        s = self.s
+        # le soglie in config sono in frame video: con detection a frame alterni si scalano
+        s = {k: (max(1, round(v / self.step)) if k.endswith("_frames") else v) for k, v in self.s.items()}
         self.t = t
         sides = sides or ["?"] * len(hands)
         self._update_bags(t, dets)
@@ -172,7 +174,8 @@ class StateMachine:
                 close = [i for i, dd in enumerate(dists) if dd <= s["hand_dist_px"] * scale]
                 near_hand = bool(close)
                 if near_hand:
-                    tr.hold_side = sides[min(close, key=lambda i: dists[i])]
+                    hb = hand_boxes[min(close, key=lambda i: dists[i])]
+                    tr.hold_pos = (hb[:2] + hb[2:]) / 2
                 near_bag = self._near_bag(tr.box, scale) or any(
                     self._near_bag(hand_boxes[i], scale) for i in close)
                 tr.hand_score = min(tr.hand_score + 1, s["in_hand_frames"] + s["release_frames"]) \
@@ -196,13 +199,16 @@ class StateMachine:
             else:
                 if t > tr.armed_until:
                     continue
-                # l'oggetto non si vede: la mano che lo teneva e' andata al sacchetto?
-                if s["hand_to_bag"] and not tr.armed_by_bag and tr.hold_side is not None:
-                    for i, side in enumerate(sides):
-                        if side == tr.hold_side and self._near_bag(hand_boxes[i], scale):
+                # l'oggetto non si vede: seguiamo per posizione la mano che lo teneva (l'etichetta
+                # Left/Right di MediaPipe non e' affidabile) e vediamo se arriva al sacchetto
+                if s["hand_to_bag"] and tr.hold_pos is not None and hand_boxes:
+                    centers = [(hb[:2] + hb[2:]) / 2 for hb in hand_boxes]
+                    j = min(range(len(centers)), key=lambda i: np.hypot(*(centers[i] - tr.hold_pos)))
+                    if np.hypot(*(centers[j] - tr.hold_pos)) <= s["hand_follow_px"] * scale:
+                        tr.hold_pos = centers[j]
+                        if not tr.armed_by_bag and self._near_bag(hand_boxes[j], scale):
                             tr.armed_by_bag = True
                             self._set(t, tr, VICINO_SACCHETTO)
-                            break
                 armed = tr.armed_by_bag or not s["require_bag"]
                 if armed and tr.missing >= s["missing_frames"]:
                     self._set(t, tr, OCCULTATO)

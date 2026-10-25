@@ -1,0 +1,21 @@
+# Decisioni della demo
+
+Decisioni prese da solo durante lo sviluppo, scegliendo l'opzione più semplice e robusta. Ognuna si può ribaltare.
+
+| # | Decisione | Perché | Come cambiarla |
+|---|---|---|---|
+| D-01 | La demo usa Ultralytics (YOLO-World, YOLOv8-seg), licenza **AGPL-3.0**. Vive solo in `demo/` sul branch `demo-mvp`, non nella pipeline `lookup/` | Nessun modello con licenza permissiva ha "pen" ed "eyeglasses" senza addestramento. Approvata dal fondatore il 25/10. Va contro D2/D20 di `docs/ARCHITECTURE.md`, quindi serve anche l'ok dell'altro socio | Rimuovere `demo/` prima di qualsiasi uso commerciale |
+| D-02 | `--record` è un'eccezione alla regola 4 del `CLAUDE.md` (nessun video su disco) | Serve un video di backup per la demo. È disattivato di default e salva **solo** frame già anonimizzati con l'overlay | Basta non passare `--record` |
+| D-03 | Segmentazione persona con **YOLOv8n-seg**, non MediaPipe selfie segmentation | La selfie segmentation è pensata per primi piani a 1 m. Nella clip la persona è a figura intera a 2–3 m, e lì YOLO-seg è più stabile | `models.person_seg` in config |
+| D-04 | Oscuramento con **pixelation** (blocchi = lato corto della persona / 14), non blur | A parità di costo è più irreversibile e "si legge" meglio come anonimizzazione in demo | `privacy.method: blur` |
+| D-05 | Fail-safe a 3 livelli: (1) maschera dilatata + unione con la maschera del frame precedente; (2) zona testa (22% alto della bbox persona) sempre oscurata; (3) persona persa ma vista negli ultimi 20 frame, oppure mani o volto senza persona: **tutto il frame oscurato** | Requisito "mai un frame con la persona in chiaro" | `person.hold_frames`, `privacy.failsafe_full_frame` |
+| D-06 | MediaPipe FaceDetector solo per tenere **sempre** oscurato il volto anche quando si mostrano i pixel di un oggetto. Nessun embedding o riconoscimento | Gli oggetti mostrati "in chiaro" sopra l'oscuramento non devono mai scoprire il volto | `models.face` |
+| D-07 | Si mostrano i pixel reali degli oggetti piccoli (penna, quaderno), ma **mai** quelli degli occhiali (stanno sul volto), del sacchetto (troppo grande, scoprirebbe il busto) o di oggetti nella zona testa | Il compromesso tra "oggetto visibile" e privacy | `privacy.show_object_pixels`, `never_reveal`, `reveal_max_frac` |
+| D-08 | Tracking con un **tracker semplice per centro e classe**, non ByteTrack | ByteTrack elimina in fretta le tracce di oggetti piccoli a bassa confidence (la penna), e allora l'"oggetto sparito" non si distingue dal "track perso". Il tracker semplice tiene le tracce "armate" per `armed_window_s` | `tracking.*` |
+| D-09 | Prompt per classe con sinonimi; per ogni classe vince il prompt con la confidence più alta. Quaderno = `notebook, book` ("book" funziona molto meglio). Sacchetto = `paper bag, shopping bag, plastic bag, tote bag` (la clip usa una shopper di tela) | Provati circa 20 prompt sulla clip (`PROGRESS.md`) | `classes` in config |
+| D-10 | Inferenza YOLO-World a **640**. A 1024 le classi grandi peggiorano e la penna non migliora | Misurato sulla clip | `detection.imgsz` |
+| D-11 | Regola **mano → sacchetto**: se un oggetto in mano sparisce e la mano che lo teneva (stesso lato secondo MediaPipe) arriva al sacchetto, l'oggetto passa a VICINO_SACCHETTO | Una penna dentro un pugno non si vede più: senza questa regola non arriverebbe mai "vicino al sacchetto" | `state.hand_to_bag` |
+| D-12 | OCCULTATO solo se l'oggetto era VICINO_SACCHETTO (`require_bag: true`) | I falsi allarmi sono la metrica più importante (`CLAUDE.md`). Un oggetto posato fuori vista non deve far scattare l'allarme | `state.require_bag: false` |
+| D-13 | Se la media degli FPS scende sotto 12, la detection oggetti passa a frame alterni. Persona e mani girano sempre a ogni frame (la privacy non si salta mai) | Obiettivo ≥15 FPS | `detection.auto_skip_below_fps`, `detect_every` |
+| D-14 | Python 3.13 nel container, versioni fissate in `requirements.txt`. Su Mac servono Python 3.10–3.13 | `mediapipe 1.1.1` usa solo la Tasks API (non esiste più `mp.solutions`) | — |
+| D-15 | Le soglie in pixel della config (`hand_dist_px`, `bag_dist_px`) sono riferite a un frame con lato lungo di 640 px e scalano con la risoluzione | Stesse soglie con il telefono a 720p e con la clip a 640 | — |
