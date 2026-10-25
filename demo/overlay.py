@@ -20,8 +20,9 @@ PANEL_BG = (32, 28, 26)
 FONT = cv2.FONT_HERSHEY_SIMPLEX
 
 
-def _text(img, txt, org, scale=0.5, color=(255, 255, 255), thick=1):
-    cv2.putText(img, txt, org, FONT, scale, (0, 0, 0), thick + 2, cv2.LINE_AA)
+def _text(img, txt, org, scale=0.5, color=(255, 255, 255), thick=1, outline=False):
+    if outline:  # solo sopra il video, dove lo sfondo e' variabile
+        cv2.putText(img, txt, org, FONT, scale, (0, 0, 0), thick + 2, cv2.LINE_AA)
     cv2.putText(img, txt, org, FONT, scale, color, thick, cv2.LINE_AA)
 
 
@@ -74,11 +75,12 @@ def draw_scene(img, tracks, bags, hands, person_mask, alert, s, show_hands=True)
         h, w = img.shape[:2]
         bh = int(48 * s)
         cv2.rectangle(img, (0, 0), (w, bh), RED, -1)
-        txt = f"ALERT: occultamento rilevato - {alert}"
+        names = alert.split(", ")
+        txt = f"ALERT: occultamento rilevato - {names[-1]}" + (f" (+{len(names) - 1})" if len(names) > 1 else "")
         fs, th = 0.75 * s, max(1, int(2 * s))
         tw = cv2.getTextSize(txt, FONT, fs, th)[0][0]
-        fs *= min(1.0, (w - 24 * s) / tw)  # il testo deve stare nella larghezza del video
-        _text(img, txt, (int(12 * s), int(bh * 0.68)), fs, (255, 255, 255), th)
+        fs *= min(1.0, 0.85 * (w - 24 * s) / tw)  # margine: la misura del testo non e' esatta  # il testo deve stare nella larghezza del video
+        cv2.putText(img, txt, (int(12 * s), int(bh * 0.68)), FONT, fs, (255, 255, 255), th, cv2.LINE_AA)
 
 
 def compose(video, events, fps, cfg, alert, mode, info=""):
@@ -117,7 +119,7 @@ def compose(video, events, fps, cfg, alert, mode, info=""):
     _text(panel, "r reset   f schermo intero   q esci", (16, H - 18), 0.4, (140, 140, 140))
 
     out = np.hstack([vid, panel])
-    _text(out, f"{fps:4.1f} FPS {info}", (out.shape[1] - pw - 150, H - 14), 0.5, (255, 255, 255))
+    _text(out, f"{fps:4.1f} FPS {info}", (out.shape[1] - pw - 150, H - 14), 0.5, (255, 255, 255), outline=True)
     return out
 
 

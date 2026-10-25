@@ -61,6 +61,7 @@ tracking:
   match_dist: 0.35        # distanza massima centro-centro (in diagonali della bbox) per associare
   max_age_s: 6.0          # dopo quanti secondi senza detection una traccia viene eliminata (se non armata)
   min_hits: 3             # detection minime prima che una traccia sia mostrata/usata (anti falsi positivi)
+  show_occult_s: 4.0       # per quanto resta disegnata la bbox di un oggetto occultato
   show_stale_s: 1.0       # una traccia non armata e non vista da piu' di cosi' non viene disegnata
   bag_memory_s: 1.0       # il sacchetto resta "presente" per questo tempo dopo l'ultima detection
 

@@ -43,6 +43,7 @@ class Track:
         self.armed_by_bag = False
         self.seen_streak = 0
         self.hits = 1
+        self.occult_t = -1.0
         self.hold_pos = None      # ultima posizione nota della mano che teneva l'oggetto
 
 
@@ -71,6 +72,8 @@ class StateMachine:
     def _set(self, t, tr, state):
         if tr.state != state:
             tr.state = state
+            if state == OCCULTATO:
+                tr.occult_t = t
             self._emit(t, tr, state)
             if state == OCCULTATO and self.alert is None:
                 self.alert = tr.cls
@@ -109,7 +112,10 @@ class StateMachine:
         for tr in self.tracks:
             if tr.hits < self.tr["min_hits"]:
                 continue
-            if tr.state != VISIBILE or self.t - tr.last_seen <= self.tr["show_stale_s"]:
+            if tr.state == OCCULTATO:  # resta a schermo qualche secondo, poi solo nel banner/log
+                if self.t - tr.occult_t <= self.tr["show_occult_s"]:
+                    out.append(tr)
+            elif tr.state != VISIBILE or self.t - tr.last_seen <= self.tr["show_stale_s"]:
                 out.append(tr)
         return out
 
